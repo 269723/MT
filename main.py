@@ -98,8 +98,12 @@ def load():
     
 def checkIn(user, pwd, ip):
     global hasE
-    # 用cloudscraper替代requests.session，自动过CF验证
-    req = cloudscraper.create_scraper(browser={'custom': 'chrome'})
+    # cloudscraper优化配置
+    req = cloudscraper.create_scraper(
+        browser='chrome',
+        delay=10,
+        interpreter='js2py'
+    )
     req.headers.update(headers)
     proxies = {
         'http': f'http://{ip}',
@@ -109,12 +113,20 @@ def checkIn(user, pwd, ip):
     logger.info(f"{format_username(user)} 开始签到")
     try:
         url = 'https://bbs.binmt.cc/member.php?mod=logging&action=login&infloat=yes&handlekey=login&inajax=1&ajaxtarget=fwin_content_login'
-        resp = req.get(url, proxies=proxies, timeout=20)
+        resp = req.get(url, proxies=proxies, timeout=25)
         resp.encoding = resp.apparent_encoding
         if resp.ok:
             content = resp.text
             _loginhash = loginhash(content)
             _formhash = formhash(content)
+            # =========新增调试打印hash值=========
+            print(f"【DEBUG】loginhash={repr(_loginhash)}")
+            print(f"【DEBUG】formhash={repr(_formhash)}")
+            # ===================================
+            # 判断是否拿到loginhash，如果为空直接放弃这个代理
+            if not _loginhash or not _formhash:
+                logger.warning(f"{format_username(user)}: 未能提取loginhash/formhash，跳过该代理")
+                return False
             url = f'https://bbs.binmt.cc/member.php?mod=logging&action=login&loginsubmit=yes&handlekey=login&loginhash={_loginhash}&inajax=1'
             data = {
                 'formhash': _formhash,
@@ -126,9 +138,9 @@ def checkIn(user, pwd, ip):
                 'answer': '',
                 'agreebbrule': ''
             }
-            resp = req.post(url, data=data, proxies=proxies, timeout=20)
+            resp = req.post(url, data=data, proxies=proxies, timeout=25)
             resp.encoding = resp.apparent_encoding
-            # 调试打印
+            # 调试打印登录返回
             print("【DEBUG-登录返回】", resp.text[:500])
             if resp.ok:
                 if '失败' in resp.text:
@@ -137,13 +149,13 @@ def checkIn(user, pwd, ip):
                     hasE = True
                     return
                 url = 'https://bbs.binmt.cc/k_misign-sign.html'
-                resp = req.get(url, proxies=proxies, timeout=20)
+                resp = req.get(url, proxies=proxies, timeout=25)
                 resp.encoding = resp.apparent_encoding
                 _formhash = formhash(resp.text)
                 code = resp.status_code
                 if resp.ok:
                     url = f'https://bbs.binmt.cc/plugin.php?id=k_misign:sign&operation=qiandao&format=text&formhash={_formhash}'
-                    resp = req.get(url, proxies=proxies, timeout=20)
+                    resp = req.get(url, proxies=proxies, timeout=25)
                     resp.encoding = resp.apparent_encoding
                     if '已签' in resp.text:
                         del accounts_list[user]
@@ -155,6 +167,7 @@ def checkIn(user, pwd, ip):
         logger.warning(f"异常: {str(e)}")
         IP_LIST[ip] = False
     return False
+
 
 def loginhash(data):
     pattern = r'loginhash.*?=(.*?)[\'"]>'
