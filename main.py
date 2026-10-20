@@ -125,6 +125,7 @@ def checkIn(user, pwd, ip):
             }
             resp = req.post(url, data=data, proxies=proxies, timeout=20)
             resp.encoding = resp.apparent_encoding
+            print("【DEBUG-登录返回】", resp.text[:500])
             if resp.ok:
                 if '失败' in resp.text:
                     del accounts_list[user]
