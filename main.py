@@ -1,3 +1,8 @@
+import os
+print("====DEBUG====")
+print("ACCOUNTS原始内容：", repr(os.getenv("ACCOUNTS")))
+print("=============")
+
 import json, requests, re, os, time, random, ipaddress
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from preferences import prefs
