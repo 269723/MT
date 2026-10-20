@@ -95,9 +95,11 @@ def load():
         logger.info(f"{index}: {proxy} - {req_time}ms")
         IP_LIST[proxy] = True
 
+    
 def checkIn(user, pwd, ip):
     global hasE
-    req = requests.session()
+    # 用cloudscraper替代requests.session，自动过CF验证
+    req = cloudscraper.create_scraper(browser={'custom': 'chrome'})
     req.headers.update(headers)
     proxies = {
         'http': f'http://{ip}',
@@ -126,6 +128,7 @@ def checkIn(user, pwd, ip):
             }
             resp = req.post(url, data=data, proxies=proxies, timeout=20)
             resp.encoding = resp.apparent_encoding
+            # 调试打印
             print("【DEBUG-登录返回】", resp.text[:500])
             if resp.ok:
                 if '失败' in resp.text:
